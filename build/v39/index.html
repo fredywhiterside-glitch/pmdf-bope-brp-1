@@ -33,54 +33,45 @@
   <div id="root"></div>
 
   <script>
-    // ============ RELÓGIO E STATUS (AGORA INVISÍVEIS, APENAS INTERNOS) ============
-    function atualizarHora() {
-      const agora = new Date();
-      console.log("Horário:", agora.toLocaleTimeString("pt-BR", { hour12: false }));
-    }
-    setInterval(atualizarHora, 500);
-
+    // ============ MONITORAMENTO DE CONEXÃO ============
     function atualizarStatusConexao() {
       const status = navigator.onLine ? "Conectado" : "Offline";
-      console.log("Status de conexão:", status);
+      console.log("Status:", status);
     }
     window.addEventListener("online", atualizarStatusConexao);
     window.addEventListener("offline", atualizarStatusConexao);
     atualizarStatusConexao();
 
-    // ============ WEBSOCKET EM TEMPO REAL ============
-    try {
-      const socket = new WebSocket("ws://localhost:3000");
-
-      socket.onopen = () => console.log("Conectado ao servidor em tempo real.");
-      socket.onmessage = (event) => console.log("Mensagem:", event.data);
-      socket.onclose = () => console.log("Conexão encerrada.");
-      socket.onerror = () => console.log("Erro ao conectar ao servidor.");
-    } catch (e) {
-      console.log("WebSocket não suportado neste navegador.");
-    }
-
-    // ============ AUTOUPDATE (ATUALIZAÇÃO AUTOMÁTICA) ============
-    let ultimaVersao = null;
-
-    async function checarAtualizacao() {
+    // ============ FUNÇÃO PARA ATUALIZAR DADOS ============
+    async function atualizarDados() {
       try {
-        const resposta = await fetch(window.location.href, { cache: "no-store" });
-        const texto = await resposta.text();
-        const hash = btoa(texto);
+        // Substitua esta URL pela rota real da sua API (ou arquivo JSON)
+        const resposta = await fetch("/api/dados.json", { cache: "no-store" });
 
-        if (ultimaVersao && ultimaVersao !== hash) {
-          console.log("Nova versão detectada, recarregando...");
-          location.reload(true);
+        if (!resposta.ok) throw new Error("Erro ao buscar dados do servidor");
+
+        const dados = await resposta.json();
+
+        // Exemplo: se você tiver um elemento para exibir os dados
+        // pode atualizar diretamente no React, ou no HTML (se quiser testar)
+        const root = document.getElementById("root");
+        if (root && !window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+          root.innerHTML = `
+            <pre style="color:white; font-size:14px;">
+              ${JSON.stringify(dados, null, 2)}
+            </pre>
+          `;
         }
-        ultimaVersao = hash;
-      } catch (e) {
-        console.warn("Falha ao verificar atualização:", e);
+
+        console.log("Dados atualizados:", dados);
+      } catch (erro) {
+        console.warn("Falha ao atualizar dados:", erro);
       }
     }
 
-    setInterval(checarAtualizacao, 30000);
-    checarAtualizacao();
+    // ============ AUTO-ATUALIZAÇÃO DOS DADOS ============
+    atualizarDados();              // Atualiza imediatamente ao abrir
+    setInterval(atualizarDados, 5000); // Reatualiza a cada 5 segundos
   </script>
 </body>
 
