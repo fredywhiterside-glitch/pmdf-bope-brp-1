@@ -19,6 +19,34 @@
 
 <body>
   <div id="root"></div>
+
+  <!-- LOGIN PERSISTENTE -->
+  <div id="user" style="text-align:center; margin-top:20px; font-size:18px;"></div>
+  <div style="text-align:center;">
+    <button id="login">Entrar</button>
+    <button id="logout" style="display:none;">Sair</button>
+  </div>
+
+  <script>
+    function checkLogin() {
+      const logged = localStorage.getItem("isLogged") === "true";
+      document.getElementById("user").textContent = logged ? "✅ Você está logado!" : "❌ Não logado";
+      document.getElementById("login").style.display = logged ? "none" : "inline";
+      document.getElementById("logout").style.display = logged ? "inline" : "none";
+    }
+
+    document.getElementById("login").onclick = () => {
+      localStorage.setItem("isLogged", "true");
+      checkLogin();
+    };
+
+    document.getElementById("logout").onclick = () => {
+      localStorage.removeItem("isLogged");
+      checkLogin();
+    };
+
+    checkLogin();
+  </script>
 </body>
 
 </html>
