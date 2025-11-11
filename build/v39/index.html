@@ -18,7 +18,81 @@
 </head>
 
 <body>
+  <h2>📋 Registros PMDF - BOPE BRP1</h2>
   <div id="root"></div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // 🔧 Coloque aqui os dados do seu projeto Supabase
+const supabaseUrl = 'https://mmfjhxxbjxrpgtxflti.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZmpoeHhiamd4cnBndHhmbHRpIiwicm9sIjoiYW5vbiIsImV4cCI6MzEyMzgyOTIsImV4cCI6MjA0MDI5Mn0.gImiWxX6VyLxvA9Ex0vXtoD6348gIZM5LKiO3OAovI';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+
+    // 🧩 Função pra carregar registros iniciais
+    async function carregarRegistros() {
+      const { data, error } = await supabase
+        .from('registros') // nome da tabela
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar registros:', error);
+        return;
+      }
+
+      mostrarRegistros(data);
+    }
+
+    // 🧱 Função pra exibir os registros no HTML
+    function mostrarRegistros(lista) {
+      const container = document.getElementById('root');
+      container.innerHTML = '';
+      lista.forEach((item) => {
+        const div = document.createElement('div');
+        div.classList.add('registro');
+        div.innerHTML = `
+          <strong>${item.nome}</strong> — ${item.motivo} <br>
+          📍 ${item.local} <br>
+          <small>${new Date(item.created_at).toLocaleString()}</small>
+          <hr>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // 🔄 Escutar novos registros em tempo real
+    supabase
+      .channel('registros-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'registros' },
+        (payload) => {
+          console.log('Novo registro:', payload.new);
+          adicionarRegistro(payload.new);
+        }
+      )
+      .subscribe();
+
+    // ➕ Adicionar novo registro visualmente
+    function adicionarRegistro(item) {
+      const container = document.getElementById('root');
+      const div = document.createElement('div');
+      div.classList.add('registro');
+      div.innerHTML = `
+        <strong>${item.nome}</strong> — ${item.motivo} <br>
+        📍 ${item.local} <br>
+        <small>${new Date(item.created_at).toLocaleString()}</small>
+        <hr>
+      `;
+      container.prepend(div);
+    }
+
+    // 🚀 Carregar registros ao abrir o site
+    carregarRegistros();
+  </script>
 </body>
+
 
 </html>
