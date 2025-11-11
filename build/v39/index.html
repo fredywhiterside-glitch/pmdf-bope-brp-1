@@ -19,108 +19,118 @@
 
 <body>
   <div id="root"></div>
+
   <script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-  // 🔧 Conexão com o seu projeto Supabase
-  const supabaseUrl = 'https://mmfjhxxbjgxrpgtxflti.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZmpoeHhiamd4cnBndHhmbHRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MzgyOTIsImV4cCI6MjA3ODMxNDI5Mn0.gImiWKxX6VyLxvA9Ex0vXtoD6348gIZM5LKiO3OAovI';
-  const supabase = createClient(supabaseUrl, supabaseKey);
+    // 🔧 Conexão com o seu projeto Supabase
+    const supabaseUrl = 'https://mmfjhxxbjxrpgtxflti.supabase.co'; // corrigido
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZmpoeHhiamd4cnBndHhmbHRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MzgyOTIsImV4cCI6MjA3ODMxNDI5Mn0.gImiWKxX6VyLxvA9Ex0vXtoD6348gIZM5LKiO3OAovI';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // 🔄 Canal em tempo real (Broadcast)
-  const canal = supabase.channel('registros', {
-    config: {
-      broadcast: { self: true },
-    },
-  });
-
-  // 🚀 Função pra criar novo registro (envio + broadcast imediato)
-  async function criarRegistro(dados) {
-    // Mostra imediatamente no cliente
-    adicionarRegistro(dados);
-
-    // Envia pro Supabase (salva no banco)
-    await supabase.from('registros').insert(dados);
-
-    // Notifica os outros usuários instantaneamente
-    await canal.send({
-      type: 'broadcast',
-      event: 'novo-registro',
-      payload: dados,
+    // 🔄 Canal em tempo real (Broadcast)
+    const canal = supabase.channel('registros', {
+      config: {
+        broadcast: { self: true },
+      },
     });
-  }
 
-  // 👁️ Escuta registros em tempo real via broadcast
-  canal.on('broadcast', { event: 'novo-registro' }, (msg) => {
-    adicionarRegistro(msg.payload);
-  });
+    // 🚀 Função pra criar novo registro (envio + broadcast imediato)
+    async function criarRegistro(dados) {
+      adicionarRegistro(dados); // Mostra localmente de imediato
 
-  // 👂 Escuta também via Postgres (garantia de sincronização)
-  supabase
-  .channel('registros-db')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'registros' },
-    (payload) => {
-      console.log('Mudança detectada:', payload);
+      // Envia pro Supabase
+      const { error } = await supabase.from('registros').insert(dados);
+      if (error) console.error('Erro ao inserir:', error);
 
-      if (payload.eventType === 'INSERT') {
-        adicionarRegistro(payload.new);
-      } else if (payload.eventType === 'UPDATE') {
-        // Atualiza o registro visual, se necessário
-        console.log('Registro atualizado:', payload.new);
-      } else if (payload.eventType === 'DELETE') {
-        // Remove o registro da tela
-        console.log('Registro deletado:', payload.old);
-      }
+      // Notifica os outros usuários instantaneamente
+      await canal.send({
+        type: 'broadcast',
+        event: 'novo-registro',
+        payload: dados,
+      });
     }
-  )
-  .subscribe();
 
-  // 🧱 Renderizar registros existentes ao abrir
-  async function carregarRegistros() {
-    const { data, error } = await supabase
-      .from('registros')
-      .select('*')
-      .order('id', { ascending: false });
-    if (error) console.error(error);
-    mostrarRegistros(data);
-  }
-
-  function mostrarRegistros(lista) {
-    const root = document.getElementById('root');
-    root.innerHTML = '';
-    lista.forEach(adicionarRegistro);
-  }
-
-  function adicionarRegistro(item) {
-    const root = document.getElementById('root');
-    const div = document.createElement('div');
-    div.classList.add('registro');
-    div.innerHTML = `
-      <strong>${item.nome}</strong> — ${item.motivo} <br>
-      📍 ${item.local} <br>
-      <small>${new Date(item.created_at || Date.now()).toLocaleString()}</small>
-      <hr>
-    `;
-    root.prepend(div);
-  }
-
-  carregarRegistros();
-  canal.subscribe();
-
-  // Exemplo de botão de teste (você pode remover)
-  window.testarRegistro = () => {
-    criarRegistro({
-      nome: 'Teste Instantâneo',
-      motivo: 'Verificação Broadcast',
-      local: 'Painel PMDF',
-      created_at: new Date().toISOString(),
+    // 👁️ Escuta registros em tempo real via broadcast
+    canal.on('broadcast', { event: 'novo-registro' }, (msg) => {
+      adicionarRegistro(msg.payload);
     });
-  };
-</script>
 
+    // 👂 Escuta também via Postgres (garantia de sincronização)
+    supabase
+      .channel('registros-db')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'registros' },
+        (payload) => {
+          console.log('Mudança detectada:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            adicionarRegistro(payload.new);
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Registro atualizado:', payload.new);
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Registro deletado:', payload.old);
+          }
+        }
+      )
+      .subscribe();
+
+    // 🧱 Renderizar registros existentes ao abrir
+    async function carregarRegistros() {
+      const { data, error } = await supabase
+        .from('registros') // verifique se esse é o nome exato da tabela
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar registros:', error);
+        document.getElementById('root').innerHTML = '<p style="color:red;">Erro ao carregar registros.</p>';
+        return;
+      }
+
+      mostrarRegistros(data);
+    }
+
+    // 💡 Função protegida contra data nula
+    function mostrarRegistros(lista) {
+      const root = document.getElementById('root');
+      root.innerHTML = '';
+
+      if (!lista || lista.length === 0) {
+        root.innerHTML = '<p style="color:#aaa;text-align:center;margin-top:20px;">Nenhum registro encontrado.</p>';
+        return;
+      }
+
+      lista.forEach(adicionarRegistro);
+    }
+
+    // 🧩 Função para renderizar cada item
+    function adicionarRegistro(item) {
+      const root = document.getElementById('root');
+      const div = document.createElement('div');
+      div.classList.add('registro');
+      div.innerHTML = `
+        <strong>${item.nome}</strong> — ${item.motivo} <br>
+        📍 ${item.local} <br>
+        <small>${new Date(item.created_at || Date.now()).toLocaleString()}</small>
+        <hr>
+      `;
+      root.prepend(div);
+    }
+
+    carregarRegistros();
+    canal.subscribe();
+
+    // 🧪 Botão de teste opcional (pode remover)
+    window.testarRegistro = () => {
+      criarRegistro({
+        nome: 'Teste Instantâneo',
+        motivo: 'Verificação Broadcast',
+        local: 'Painel PMDF',
+        created_at: new Date().toISOString(),
+      });
+    };
+  </script>
 </body>
-
-
 </html>
